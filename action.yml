@@ -1,0 +1,25 @@
+name: 'Team Validator'
+description: 'Validates namespace and team membership in YAML files'
+inputs:
+  files:
+    description: 'Space-separated list of files to validate'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '1.22.7'
+    
+    - name: Build and run validator
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        go mod download
+        go build -o validator ./cmd/validator
+        ./validator ${{ inputs.files }}
