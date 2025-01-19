@@ -22,6 +22,9 @@ runs:
     
     - name: Build and run validator
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        DEBUG: "true"
       run: |
         set -ex
         VALIDATOR_DIR="${{ github.workspace }}/github-team-validator"
