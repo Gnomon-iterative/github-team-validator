@@ -25,6 +25,9 @@ runs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
         DEBUG: "true"
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
+        GITHUB_ACTOR: ${{ github.actor }}
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
       run: |
         set -ex
         VALIDATOR_DIR="${{ github.workspace }}/github-team-validator"
@@ -32,6 +35,14 @@ runs:
         cd "$VALIDATOR_DIR"
         pwd
         ls -la
+        
+        echo "Environment variables:"
+        echo "GITHUB_EVENT_PATH: $GITHUB_EVENT_PATH"
+        echo "GITHUB_ACTOR: $GITHUB_ACTOR"
+        echo "GITHUB_REPOSITORY_OWNER: $GITHUB_REPOSITORY_OWNER"
+        
+        echo "Event data:"
+        cat "$GITHUB_EVENT_PATH"
         
         echo "Downloading Go modules..."
         go mod download
