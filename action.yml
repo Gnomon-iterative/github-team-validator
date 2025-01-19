@@ -37,4 +37,14 @@ runs:
         go build -o validator ./cmd/validator
         
         echo "Running validator..."
-        ./validator ${{ inputs.files }}
+        # Convert relative paths to absolute paths
+        FILES=""
+        for file in ${{ inputs.files }}; do
+          if [[ "$file" = /* ]]; then
+            FILES="$FILES $file"
+          else
+            FILES="$FILES ${{ github.workspace }}/$file"
+          fi
+        done
+        echo "Validating files: $FILES"
+        ./validator $FILES
