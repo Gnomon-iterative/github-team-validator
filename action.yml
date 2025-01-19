@@ -10,7 +10,9 @@ runs:
   steps:
     - uses: actions/checkout@v3
       with:
-        fetch-depth: 0
+        path: github-team-validator
+        repository: Gnomon-iterative/github-team-validator
+        ref: main
     
     - uses: actions/setup-go@v4
       with:
@@ -19,7 +21,7 @@ runs:
     - name: Build and run validator
       shell: bash
       run: |
-        cd ${{ github.action_path }}
+        cd ${{ github.workspace }}/github-team-validator
         go mod download
         go build -o validator ./cmd/validator
         ./validator ${{ inputs.files }}
