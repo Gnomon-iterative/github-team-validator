@@ -8,20 +8,33 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v3
+    - name: Checkout validator
+      uses: actions/checkout@v3
       with:
         path: github-team-validator
         repository: Gnomon-iterative/github-team-validator
         ref: main
     
-    - uses: actions/setup-go@v4
+    - name: Setup Go
+      uses: actions/setup-go@v4
       with:
         go-version: '1.22.7'
     
     - name: Build and run validator
       shell: bash
       run: |
-        cd ${{ github.workspace }}/github-team-validator
+        set -ex
+        VALIDATOR_DIR="${{ github.workspace }}/github-team-validator"
+        echo "Changing to validator directory: $VALIDATOR_DIR"
+        cd "$VALIDATOR_DIR"
+        pwd
+        ls -la
+        
+        echo "Downloading Go modules..."
         go mod download
+        
+        echo "Building validator..."
         go build -o validator ./cmd/validator
+        
+        echo "Running validator..."
         ./validator ${{ inputs.files }}
