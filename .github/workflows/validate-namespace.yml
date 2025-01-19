@@ -1,7 +1,12 @@
 name: Validate Namespace and Team Membership
 
-# Trigger workflow on pull requests that modify YAML files
 on:
+  workflow_call:
+    inputs:
+      files:
+        required: true
+        type: string
+        description: 'Space-separated list of files to validate'
   pull_request:
     paths:
       - '**.yaml'
@@ -25,8 +30,9 @@ jobs:
         with:
           go-version: '1.22.7'  # Using Go version 1.22.7
       
-      # Get list of changed YAML files
+      # Get changed files if running from pull_request
       - name: Get changed files
+        if: github.event_name == 'pull_request'
         id: changed-files
         uses: tj-actions/changed-files@v39
         with:
@@ -40,11 +46,13 @@ jobs:
           go mod download
           go build -o validator ./cmd/validator
       
-      # Run validation on changed files
+      # Run validation on files
       - name: Run validation
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ -n "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            ./validator ${{ inputs.files }}
+          elif [[ -n "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
             ./validator ${{ steps.changed-files.outputs.all_changed_files }}
           fi
