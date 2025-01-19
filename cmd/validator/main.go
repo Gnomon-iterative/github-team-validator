@@ -18,6 +18,7 @@ type Namespace struct {
 			Team       string `yaml:"team"`
 			SourceCode string `yaml:"source-code"`
 		} `yaml:"annotations"`
+		Name string `yaml:"name"`
 	} `yaml:"metadata"`
 }
 
@@ -41,15 +42,18 @@ func (e *ValidationError) Error() string {
 
 // validateTeamMembership checks if the user is a member of the specified team
 func validateTeamMembership(teamName, username, orgName, token string) error {
+	log.Printf("Checking if user %s is a member of team %s in org %s", username, teamName, orgName)
+	
 	// GitHub API endpoint for team membership
 	url := fmt.Sprintf("https://api.github.com/orgs/%s/teams/%s/memberships/%s", orgName, teamName, username)
+	log.Printf("Making request to: %s", url)
 	
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return &ValidationError{Message: fmt.Sprintf("Failed to create request: %v", err)}
 	}
 
-	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{}
@@ -59,10 +63,13 @@ func validateTeamMembership(teamName, username, orgName, token string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return &ValidationError{
-			Message: fmt.Sprintf("@%s is not a member of the team '%s'", username, teamName),
-		}
+	log.Printf("Got response status: %d", resp.StatusCode)
+	
+	if resp.StatusCode == 404 {
+		return &ValidationError{Message: fmt.Sprintf("Team %s not found or user %s is not a member", teamName, username)}
+	}
+	if resp.StatusCode != 200 {
+		return &ValidationError{Message: fmt.Sprintf("Failed to check team membership. Status: %d", resp.StatusCode)}
 	}
 
 	return nil
@@ -70,14 +77,17 @@ func validateTeamMembership(teamName, username, orgName, token string) error {
 
 // checkRepositoryStatus verifies if the repository exists and checks its visibility
 func checkRepositoryStatus(repoName, orgName, token string) error {
+	log.Printf("Checking repository %s/%s", orgName, repoName)
+	
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s", orgName, repoName)
+	log.Printf("Making request to: %s", url)
 	
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return &ValidationError{Message: fmt.Sprintf("Failed to create request: %v", err)}
 	}
 
-	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{}
@@ -87,23 +97,13 @@ func checkRepositoryStatus(repoName, orgName, token string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return &ValidationError{
-			Message: fmt.Sprintf("Repository '%s' does not exist in the organization", repoName),
-		}
+	log.Printf("Got response status: %d", resp.StatusCode)
+	
+	if resp.StatusCode == 404 {
+		return &ValidationError{Message: fmt.Sprintf("Repository %s/%s not found", orgName, repoName)}
 	}
-
-	var repoData struct {
-		Private bool `json:"private"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&repoData); err != nil {
-		return &ValidationError{Message: fmt.Sprintf("Failed to parse repository data: %v", err)}
-	}
-
-	if repoData.Private {
-		return &ValidationError{
-			Message: fmt.Sprintf("Repository '%s' is private. Please ensure it's public for proper access", repoName),
-		}
+	if resp.StatusCode != 200 {
+		return &ValidationError{Message: fmt.Sprintf("Failed to check repository status. Status: %d", resp.StatusCode)}
 	}
 
 	return nil
@@ -141,11 +141,20 @@ func commentOnPR(message, commentsURL, token string) error {
 }
 
 func main() {
+	// Enable debug logging
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	
 	// Get required environment variables
 	token := os.Getenv("GITHUB_TOKEN")
 	eventPath := os.Getenv("GITHUB_EVENT_PATH")
 	prAuthor := os.Getenv("GITHUB_ACTOR")
 	orgName := os.Getenv("GITHUB_REPOSITORY_OWNER")
+
+	log.Printf("Starting validation with:")
+	log.Printf("- PR Author: %s", prAuthor)
+	log.Printf("- Organization: %s", orgName)
+	log.Printf("- Event Path: %s", eventPath)
+	log.Printf("- Token present: %v", token != "")
 
 	// Read GitHub event data
 	eventData, err := os.ReadFile(eventPath)
@@ -165,13 +174,17 @@ func main() {
 	// Process changed YAML files from command line arguments
 	hasErrors := false
 	for _, filePath := range os.Args[1:] {
+		log.Printf("Processing file: %s", filePath)
+		
 		if !strings.HasSuffix(filePath, ".yaml") && !strings.HasSuffix(filePath, ".yml") {
+			log.Printf("Skipping non-YAML file: %s", filePath)
 			continue
 		}
 
 		// Read and parse YAML file
 		data, err := os.ReadFile(filePath)
 		if err != nil {
+			log.Printf("Failed to read file %s: %v", filePath, err)
 			commentOnPR(fmt.Sprintf("Failed to read file %s: %v", filePath, err), event.PullRequest.CommentsURL, token)
 			hasErrors = true
 			continue
@@ -179,13 +192,20 @@ func main() {
 
 		var ns Namespace
 		if err := yaml.Unmarshal(data, &ns); err != nil {
+			log.Printf("Invalid YAML in %s: %v", filePath, err)
 			commentOnPR(fmt.Sprintf("Invalid YAML in %s: %v", filePath, err), event.PullRequest.CommentsURL, token)
 			hasErrors = true
 			continue
 		}
 
+		log.Printf("Parsed namespace:")
+		log.Printf("- Team: %s", ns.Metadata.Annotations.Team)
+		log.Printf("- Source Code: %s", ns.Metadata.Annotations.SourceCode)
+		log.Printf("- Name: %s", ns.Metadata.Name)
+
 		// Validate team annotation
 		if ns.Metadata.Annotations.Team == "" {
+			log.Printf("Team annotation is missing in %s", filePath)
 			commentOnPR((&ValidationError{
 				Message: "Team annotation is missing",
 				File:    filePath,
@@ -196,6 +216,7 @@ func main() {
 
 		// Validate source-code annotation
 		if ns.Metadata.Annotations.SourceCode == "" {
+			log.Printf("Source code repository annotation is missing in %s", filePath)
 			commentOnPR((&ValidationError{
 				Message: "Source code repository annotation is missing",
 				File:    filePath,
@@ -206,6 +227,7 @@ func main() {
 
 		// Check team membership
 		if err := validateTeamMembership(ns.Metadata.Annotations.Team, prAuthor, orgName, token); err != nil {
+			log.Printf("Team membership validation failed: %v", err)
 			commentOnPR(err.Error(), event.PullRequest.CommentsURL, token)
 			hasErrors = true
 			continue
@@ -213,6 +235,7 @@ func main() {
 
 		// Check repository status
 		if err := checkRepositoryStatus(ns.Metadata.Annotations.SourceCode, orgName, token); err != nil {
+			log.Printf("Repository validation failed: %v", err)
 			commentOnPR(err.Error(), event.PullRequest.CommentsURL, token)
 			hasErrors = true
 			continue
@@ -220,6 +243,7 @@ func main() {
 	}
 
 	if !hasErrors {
+		log.Printf("All validations passed!")
 		commentOnPR("✅ All team membership and repository validations passed!", event.PullRequest.CommentsURL, token)
 	}
 
