@@ -1,7 +1,0 @@
-metadata:
-  annotations:
-    team: data-insights  # Updated to match your actual team name
-    source-code: cloud-cost  # Updated to match your actual repository
-  name: example-namespace
-spec:
-  # Other namespace specifications go here
