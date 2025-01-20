@@ -1,5 +1,11 @@
 name: 'Team Validator'
 description: 'Validates namespace and team membership in YAML files'
+
+permissions:
+  contents: read
+  organization: read  # This gives read:org scope
+  pull-requests: write  # For commenting on PRs
+
 inputs:
   files:
     description: 'Space-separated list of files to validate'
