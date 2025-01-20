@@ -53,7 +53,7 @@ func validateTeamMembership(teamName, username, orgName, token string) error {
 		return &ValidationError{Message: fmt.Sprintf("Failed to create request: %v", err)}
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{}
@@ -87,7 +87,7 @@ func checkRepositoryStatus(repoName, orgName, token string) error {
 		return &ValidationError{Message: fmt.Sprintf("Failed to create request: %v", err)}
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{}
@@ -122,7 +122,7 @@ func commentOnPR(message, commentsURL, token string) error {
 		return fmt.Errorf("failed to create request: %v", err)
 	}
 
-	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
