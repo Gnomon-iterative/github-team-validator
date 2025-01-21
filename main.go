@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/go-github/v53/github"
-	"gopkg.in/yaml.v2"
+	"github.com/google/go-github/v57/github"
 	"golang.org/x/oauth2"
+	"gopkg.in/yaml.v3"
 )
 
 type NamespaceMetadata struct {
