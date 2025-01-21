@@ -1,9 +1,29 @@
-FROM golang:1.21-alpine
+# Build stage
+FROM golang:1.20-alpine AS builder
 
-WORKDIR /app
+# Install git and build dependencies
+RUN apk add --no-cache git build-base
+
+WORKDIR /build
+
+# Copy go.mod and go.sum first to leverage Docker cache
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the rest of the code
 COPY . .
 
-RUN go mod download
-RUN go build -o /validator
+# Build the application with static linking
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags='-extldflags=-static' -o validator
 
-ENTRYPOINT ["/validator"]
+# Final stage
+FROM alpine:3.18
+
+RUN apk add --no-cache ca-certificates
+
+WORKDIR /app
+
+# Copy only the binary from builder
+COPY --from=builder /build/validator /app/validator
+
+ENTRYPOINT ["/app/validator"]
