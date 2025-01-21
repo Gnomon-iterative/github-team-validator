@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v57/github"
@@ -21,8 +22,15 @@ type Namespace struct {
 
 func main() {
 	token := os.Getenv("INPUT_GITHUB-TOKEN")
-	prNumber := os.Getenv("INPUT_PR-NUMBER")
+	prNumberStr := os.Getenv("INPUT_PR-NUMBER")
 	org := os.Getenv("INPUT_ORGANIZATION")
+
+	// Convert PR number from string to int
+	prNumber, err := strconv.Atoi(prNumberStr)
+	if err != nil {
+		fmt.Printf("Error converting PR number to integer: %v\n", err)
+		os.Exit(1)
+	}
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
@@ -91,7 +99,9 @@ func main() {
 
 	// Check for LGTM comment if user is not a team member
 	if isMember == nil {
-		opts := &github.ListOptions{PerPage: 100}
+		opts := &github.IssueListCommentsOptions{
+			ListOptions: github.ListOptions{PerPage: 100},
+		}
 		comments, _, err := client.Issues.ListComments(ctx, org, "cloud-cost", prNumber, opts)
 		if err != nil {
 			fmt.Printf("Error getting comments: %v\n", err)
