@@ -1,6 +1,6 @@
 module github.com/Gnomon-iterative/github-team-validator
 
-go 1.21
+go 1.20
 
 require (
 	github.com/google/go-github/v53 v53.2.0
