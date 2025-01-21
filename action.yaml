@@ -1,8 +1,10 @@
 name: 'GitHub Team Validator'
 description: 'Validates team membership and repository status for namespace files'
+author: 'Gnomon-iterative'
+
 inputs:
   github-token:
-    description: 'GitHub token'
+    description: 'GitHub token for API access'
     required: true
   pr-number:
     description: 'Pull request number'
@@ -10,6 +12,7 @@ inputs:
   organization:
     description: 'GitHub organization name'
     required: true
+
 runs:
   using: 'docker'
   image: 'Dockerfile'
@@ -17,3 +20,7 @@ runs:
     INPUT_GITHUB-TOKEN: ${{ inputs.github-token }}
     INPUT_PR-NUMBER: ${{ inputs.pr-number }}
     INPUT_ORGANIZATION: ${{ inputs.organization }}
+
+branding:
+  icon: 'shield'
+  color: 'blue'
