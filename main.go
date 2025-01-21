@@ -63,8 +63,18 @@ func main() {
 
 	// Check team membership
 	isMember, _, err := client.Teams.GetTeamMembershipBySlug(ctx, org, team, author)
-	if err != nil || isMember == nil {
-		comment := fmt.Sprintf("@%s is not a member of team %s. Need LGTM from a team member to proceed.", author, team)
+	if err != nil {
+		fmt.Printf("Error checking team membership: %v\n", err)
+		comment := fmt.Sprintf("Error checking team membership for @%s in team %s. Please try again.", author, team)
+		_, _, err = client.Issues.CreateComment(ctx, org, "cloud-cost", prNumber, &github.IssueComment{Body: &comment})
+		if err != nil {
+			fmt.Printf("Error creating comment: %v\n", err)
+		}
+		os.Exit(1)
+	}
+
+	if isMember == nil || isMember.GetState() != "active" {
+		comment := fmt.Sprintf("@%s is not an active member of team %s. Need LGTM from a team member to proceed.", author, team)
 		_, _, err = client.Issues.CreateComment(ctx, org, "cloud-cost", prNumber, &github.IssueComment{Body: &comment})
 		if err != nil {
 			fmt.Printf("Error creating comment: %v\n", err)
