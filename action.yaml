@@ -13,3 +13,7 @@ inputs:
 runs:
   using: 'docker'
   image: 'Dockerfile'
+  env:
+    INPUT_GITHUB-TOKEN: ${{ inputs.github-token }}
+    INPUT_PR-NUMBER: ${{ inputs.pr-number }}
+    INPUT_ORGANIZATION: ${{ inputs.organization }}

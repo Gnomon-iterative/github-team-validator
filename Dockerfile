@@ -32,4 +32,13 @@ COPY --from=builder /build/validator /app/validator
 RUN chmod +x /app/validator && \
     ls -la /app/validator
 
+# Add environment variables
+ENV INPUT_GITHUB-TOKEN=""
+ENV INPUT_PR-NUMBER=""
+ENV INPUT_ORGANIZATION=""
+
+# Add a healthcheck
+HEALTHCHECK --interval=5s --timeout=3s \
+  CMD ps aux | grep validator || exit 1
+
 ENTRYPOINT ["/app/validator"]
